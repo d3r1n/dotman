@@ -1,0 +1,20 @@
+? : not sure
++ : will be implemented
+- : will not be implemented
+---------------------------
+
+[X] - Init, Add, Remove, Update, Install Commands 					(+) // Install Will be implemented in version 0.2
+
+[X] - Check if dotman.json exists 									(+)
+
+[] - git integration 												(+)
+
+[] - Colored output													(+)
+
+[] - Automatically Update dotfiles									(+)
+
+[] - Generate Log output 											(+)
+
+[] - Custom Scripts can be executed in installation stage			(+)
+
+[] - Auto updater from github releases 								(?)
