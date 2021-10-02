@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -15,14 +16,28 @@ import (
 	"github.com/tidwall/pretty"
 )
 
+/* ==== Globals ==== */
+
+// colored output
+var red 	= color.New(color.FgHiRed)
+var green 	= color.New(color.FgHiGreen)
+var blue 	= color.New(color.FgHiCyan)
+
+// Formatted time.Now()
+var time_now = time.Now().Format("3:4:5 PM 2006-01-02")
+
+/* ================ */
+
 /* === FUNCTIONS === */
 
+// check if error is not nil
 func check_Error(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
 
+// check the file type of given file 
 func check_File_Type(path string) string {
 	fileInfo, err := os.Stat(path)
 	check_Error(err)
@@ -52,12 +67,11 @@ func newDotfile(Name string, Description string, Location string, Type string, P
 }
 
 // Generate a new GitConfig object.
-func newGitConfig(Name string, Description string, Branch string, Origin string) *GitConfig {
+func newGitConfig(RemoteName string, Branch string, RemoteUrl string) *GitConfig {
 	return &GitConfig {
-		Name: 			Name,
-		Description:    Description,
+		RemoteName: 	RemoteName,
 		Branch:    		Branch,
-		Origin: 		Origin,
+		RemoteUrl: 		RemoteUrl,
 	} 
 }
 
@@ -112,6 +126,7 @@ func check_config_exist() bool {
 	}
 }
 
+// check if path exists
 func exists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
@@ -120,21 +135,26 @@ func exists(path string) bool {
 	}
 }
 
+// read the dotman.json config file
+func read_config_file() Config {
+
+	// Get the file contents of the dotman.json file
+	file_contents, err := ioutil.ReadFile("dotman.json")
+	check_Error(err)
+
+	// Convert contents to an Array of Dotfile objects
+	conf := from_JSON(file_contents)
+	return conf
+}
+
 // Add Dotfile Object to the dotman.json file
 func add_dotfile(d Dotfile) {
-
-	red := color.New(color.FgRed)
 
 	// Open the dotman.json file in current working directory as Read & Write mode
 	file, err := os.OpenFile("dotman.json", os.O_CREATE | os.O_RDWR, 0644)
 	check_Error(err)
 
-	// Get the file contents of the dotman.json file
-	file_contents, err := os.ReadFile("dotman.json")
-	check_Error(err)
-
-	// Convert contents to an Array of Dotfile objects
-	conf := from_JSON(file_contents)
+	conf := read_config_file()
 
 	// Check if the dotfile is already declared
 	for i := 0; i < len(conf.Dotfiles); i++ {
@@ -161,22 +181,13 @@ func add_dotfile(d Dotfile) {
 // Remove Dotfile Object from the dotman.json file
 func remove_dotfile(name string) []string {
 
-	red := color.New(color.FgRed)
-	green := color.New(color.FgHiGreen)
-	blue := color.New(color.FgHiCyan)
-
 	// Open the dotman.json file in current working directory as Read & Write mode
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
-	// Get the file contents of the dotman.json file
-	file_contents, err := ioutil.ReadFile("dotman.json")
-	check_Error(err)
+	conf := read_config_file()
 
-	// Convert contents to an Array of Dotfile objects
-	conf := from_JSON(file_contents)
-
-	// if dotfile is already exists set isFound to true and Remove the Dotfile Object from the array
+	// if dotfile is exists set isFound to true and Remove the Dotfile Object from the array
 	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
 	var Found Dotfile
@@ -205,10 +216,8 @@ func remove_dotfile(name string) []string {
 
 		// new buffer writer for the file
 		writer := bufio.NewWriter(file)
-		wBytes, _ := writer.Write(to_JSON(conf))
+		_, err := writer.Write(to_JSON(conf))
 		check_Error(err)
-
-		_ = wBytes
 
 		// flush the io writer and close the file
 		writer.Flush()
@@ -218,34 +227,27 @@ func remove_dotfile(name string) []string {
 	}
 }
 
+// Update a Dotfile Object in the dotman.json file
 func update_dotfile(name string) string {
 
-	red := color.New(color.FgRed)
-	green := color.New(color.FgHiGreen)
-	blue := color.New(color.FgHiCyan)
-
-	// Open the dotman.json file in current working directory as Read & Write mode
+	// Open the dotman.json file in current working directory as Write only mode
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
-	// Get the file contents of the dotman.json file
-	file_contents, err := ioutil.ReadFile("dotman.json")
-	check_Error(err)
+	conf := read_config_file()
 
-	// Convert contents to an Array of Dotfile objects
-	conf := from_JSON(file_contents)
-
-	// if dotfile is already exists set isFound to true and Remove the Dotfile Object from the array
+	// if dotfile is exists set isFound to true and Update the Dotfile Object from the array
 	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
-	var Found Dotfile
-	for index, obj := range conf.Dotfiles {
+	var Location string
+	for _, obj := range conf.Dotfiles {
 		if obj.Name == name {
-			green.Printf("Found \"%s\" DotFile\n", obj.Name)
-			blue.Println("Updating...")
+			green.Printf("\nFound \"%s\" DotFile\n", obj.Name)
+			blue.Println("Updating...\n")
 			isFound = true
-			Found = obj
-			conf.Dotfiles[index].LastUpdate = time.Now().Format("3:4:5 PM 2006-01-02")
+			Location = obj.Location
+			obj.LastUpdate = time_now
+			copyFileOrDir(obj.Location, FILES_PATH)
 			break
 		} else {
 			isFound = false
@@ -264,79 +266,77 @@ func update_dotfile(name string) string {
 
 		// new buffer writer for the file
 		writer := bufio.NewWriter(file)
-		wBytes, _ := writer.Write(to_JSON(conf))
+		_, err := writer.Write(to_JSON(conf))
 		check_Error(err)
-
-		_ = wBytes
 
 		// flush the io writer and close the file
 		writer.Flush()
 		file.Close()
 
-		return Found.Location
+		// git stuff
+		git_add(FILES_PATH + filepath.Base(Location))
+		git_commit(fmt.Sprintf("Dotman: Updated the \"%s\" dotfile | " + time_now, name))
+		git_push(conf.Repository.RemoteName, conf.Repository.Branch)
+
+		return Location
 	}
 }
 
+// Update all the Dotfile Objects in the dotman.json file
 func update_all_dotfiles() {
 
-	green := color.New(color.FgHiGreen)
-	blue := color.New(color.FgHiCyan)
-
-	// Open the dotman.json file in current working directory as Read & Write mode
+	// Open the dotman.json file in current working directory as Write only mode
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
-	// Get the file contents of the dotman.json file
-	file_contents, err := ioutil.ReadFile("dotman.json")
-	check_Error(err)
+	conf := read_config_file()
 
-	// Convert contents to an Array of Dotfile objects
-	conf := from_JSON(file_contents)
-
-	green.Printf("Found %d dotfiles in dotman.json\n\n", len(conf.Dotfiles))
+	green.Printf("\nFound %d dotfiles in dotman.json\n", len(conf.Dotfiles))
 
 	// if dotfile is already exists set isFound to true and Remove the Dotfile Object from the array
 	// otherwise set isFound to false and continue until whole loop is finished
 	for index, obj := range conf.Dotfiles {
 		blue.Printf("Updating: %s...\n",  obj.Name)
-		conf.Dotfiles[index].LastUpdate = time.Now().Format("3:4:5 PM 2006-01-02")
+		conf.Dotfiles[index].LastUpdate = time_now
 		copyFileOrDir(obj.Location, FILES_PATH)
+		
+		// add file to git repository | executed for every dotfile in dotman.json
+		git_add(FILES_PATH + filepath.Base(obj.Location)) 
 	}
+
+	// git stuff
+	git_commit("Dotman: Updated all the dotfiles. | " + time_now)
+	git_push(conf.Repository.RemoteName, conf.Repository.Branch)
 
 	// Remove All the contents of the dotman.json file
 	os.Truncate("dotman.json", 0)
 
 	// new buffer writer for the file
 	writer := bufio.NewWriter(file)
-	wBytes, _ := writer.Write(to_JSON(conf))
+	out, err := writer.Write(to_JSON(conf))
 	check_Error(err)
-
-	_ = wBytes
+	_ = out
 
 	// flush the io writer and close the file
 	writer.Flush()
 	file.Close()
 }
 
-// Update Dotfile Object(s) in the dotman.json file
 
 // Copy a file or a directory
 func copyFileOrDir(from_location string, to_location string) {
 	cmd := exec.Command("cp", "-f", from_location, to_location)
-	err := cmd.Run()
-	check_Error(err)
+	cmd.Run()
 }
 
 // Delete a file or a directory
 func deleteFileOrDir(file string, file_type string) {
 	if file_type == "file" {
 		cmd := exec.Command("rm", file)
-		err := cmd.Run()
-		check_Error(err)
+		cmd.Run()
 	} else if file_type == "directory" {
 		cmd := exec.Command("rm", "-d", file)
-		err := cmd.Run()
-		check_Error(err)
+		cmd.Run()
 	}
 
 }
@@ -345,21 +345,81 @@ func deleteFileOrDir(file string, file_type string) {
 
 /* ==== GIT UTILITIES ==== */
 
+// git init
+func git_init() {
+	cmd := exec.Command("git", "init")
+	cmd.Run()
+}
+
+// git remote add 
+func git_remote_add(name string, url string) {
+	cmd := exec.Command("git", "remote", "add", name, url)
+	cmd.Run()
+}
+
+func git_branch_add(name string) {
+	cmd := exec.Command("git", "branch", "-M", name)
+	cmd.Run()
+}
+
 // git add
+func git_add(path string) {
+	cmd := exec.Command("git", "add", path)
+	cmd.Run()
+}
+
+// git remove
+func git_remove(path string) {
+	cmd := exec.Command("git", "rm", path, "--cached")
+	cmd.Run()
+}
 
 // git commit
+func git_commit(message string) {
+	cmd := exec.Command("git", "commit", "-m", message)
+	cmd.Run()
+}
+
+// git checkout
+func git_checkout(branch string) {
+	cmd := exec.Command("git", "checkout", branch)
+	cmd.Run()
+}
+
+// check the current working branch
+func check_git_branch() string {
+	cmd := exec.Command("git", "branch")
+	out, err := cmd.Output()
+	check_Error(err)
+	return string(out)
+}
 
 // git push
+func git_push(remote string, branch string) {
+	cmd := exec.Command("git", "push", remote, branch)
+	cmd.Run()
+}
+
+// All in one commands:
+
+	// add dotfile
+func git_add_dotfile(add_path string, commit_message string, remote_name string, remote_branch string) {
+	git_add(add_path)
+	git_commit(commit_message)
+	git_push(remote_name, remote_branch)
+}
+	// remove dotfile
+func git_remove_dotfile(remove_path string, commit_message string, remote_name string, remote_branch string) {
+	git_remove(remove_path)
+	git_commit(commit_message)
+	git_push(remote_name, remote_branch)
+}
 
 /* ======================= */
 
-/* ==== Main Utilities ==== */
+/* ==== Main Functions ==== */
 
 func Init(c *ezcli.Command) {
-
-	red := color.New(color.FgRed)
-	green := color.New(color.FgHiGreen)
-	blue := color.New(color.FgHiCyan)
 
 	// variables ._.
 	var conf Config
@@ -367,11 +427,14 @@ func Init(c *ezcli.Command) {
 	var name 			string = ""
 	var description 	string = "No description specified"
 	var install_path 	string = ""
-	var git 			bool = false
+	var git 			bool   = false
+	var remote_url 		string
+	var branch_name 	string
+
 	var repository 		GitConfig
 	var dotfiles 		[]Dotfile = []Dotfile{}
 
-	// Parse the positional arguments "<name>"
+	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
 			case 0:
@@ -384,40 +447,57 @@ func Init(c *ezcli.Command) {
 		os.Exit(1)
 	}
 
-	// if user specified a description or a priority update the variables
+	// if user specified a description, install path or git enable, update the variables
 	for _, option := range c.CommandData.Options {
 		switch option.Name {
-			case "description":
-				description = option.Value
+				case "description":
+					description = option.Value
 
-			// priority must be between or equal 1 and 3
-			case "install_path":
-				install_path = option.Value
-			
-			case "git":
-				git = true
-			}	
+				case "install_path":
+					install_path = option.Value
+				
+				case "git":
+					git = true
+
+				case "remote_url":
+					remote_url = option.Value
+					blue.Println(remote_url)
+				
+				case "branch_name":
+					branch_name = option.Value
+					blue.Println(branch_name)
+			}
 		}
 	}
 
-	// if "git" is set true then initialize a Git repository
+	// if "git" is set and if remote url and branch name set too, new GitConfig Object will be created
 	if git {
-		repository = *newGitConfig("", "", "", "")
-		blue.Println("Git Enabled.\n")
+		if remote_url != "" && branch_name != "" {
+			repository = *newGitConfig("origin", branch_name, remote_url)
+			blue.Println("Git Enabled.\n")
+		} else {
+			red.Println("Please set both the Branch name and the Remote URL to use git repositories!\n")
+			os.Exit(1)
+		}
 	}
 
 	conf = *newConfig(name, description, install_path, git, repository, dotfiles)
 	json := to_JSON(conf)
 	CreateAndWrite_JSON(json)
 
+	// git stuff
+	git_init()
+	git_add("./dotman.json")
+	git_commit("Dotman: Initialized Repository")
+	git_branch_add(branch_name)
+	git_checkout(branch_name)
+	git_remote_add("origin", remote_url)
+	git_push("origin", branch_name)
+
 	green.Printf("Initialized Dotfile Project \"%s\" successfuly.", name)
 }
 
 func Add(c *ezcli.Command) {
-
-	red := color.New(color.FgRed)
-	green := color.New(color.FgHiGreen)
-	blue := color.New(color.FgHiCyan)
 
 	// check if dotman.json exists
 	if !check_config_exist() {
@@ -479,9 +559,11 @@ func Add(c *ezcli.Command) {
 		Type = "directory"
 	}
 
+	// Create a new Dotfile Object and add it to the dotman.json
 	var inputDotfile Dotfile = *newDotfile(name, description, location, Type, priority, lastupdate)
 	add_dotfile(inputDotfile)
 
+	// if ./files/ exist then copy the file inside it, if not make a directory named ./files/ then copy the file inside it
 	if exists(FILES_PATH) {
 		copyFileOrDir(inputDotfile.Location, FILES_PATH)
 	} else {
@@ -489,18 +571,26 @@ func Add(c *ezcli.Command) {
 		copyFileOrDir(inputDotfile.Location, FILES_PATH)
 	}
 
-	green.Printf("\nAdded \"%s\" to Dotfiles.\n\n", name)
+	conf := read_config_file()
+
+	git_add_dotfile(FILES_PATH + filepath.Base(inputDotfile.Location), fmt.Sprintf("Added a \"%s\" dotfile | " + inputDotfile.LastUpdate, name), conf.Repository.RemoteName, conf.Repository.Branch)
+
+	green.Printf("\nAdded \"%s\" to Dotfiles.\n", name)
 }
 
-func Remove(c *ezcli.Command) {
+func Remove(c *ezcli.Command) {	
 
-	red := color.New(color.FgRed)
-	green := color.New(color.FgHiGreen)
+	// check if dotman.json exists
+	if !check_config_exist() {
+		red.Println("Can't find the dotman.json file.")
+		blue.Println("Run \"dotman init\" to initialize the configuration.")
+		os.Exit(1)
+	}
 
 	// variables ._.
 	var name string = ""
 
-	// Parse the positional arguments "<name>" and "<location>"
+	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
 			case 0:
@@ -514,22 +604,31 @@ func Remove(c *ezcli.Command) {
 		os.Exit(1)
 	}
 
-	path := remove_dotfile(name)
-	file_name := FILES_PATH + filepath.Base(path[0])
-	deleteFileOrDir(file_name, path[1])
+	conf := read_config_file()
 
-	green.Printf("\"%s\" successfuly removed.\n\n", name)
+	// remove dotfile from dotman.json and return the Location of the removed Dotfile
+	path := remove_dotfile(name)
+	file_name := FILES_PATH + filepath.Base(path[0]) // just filename.extension
+
+	git_remove_dotfile(file_name, fmt.Sprintf("Removed the \"%s\" dotfile | " + time_now, name), conf.Repository.RemoteName, conf.Repository.Branch) // remove dotfile from git repository
+	deleteFileOrDir(file_name, path[1]) // delete the file or directory dotfile linked to
+
+	green.Printf("\"%s\" successfuly removed.\n", name)
 }
 
 func Update(c *ezcli.Command) {
 
-	red := color.New(color.FgRed)
-	green := color.New(color.FgHiGreen)
+	// check if dotman.json exists
+	if !check_config_exist() {
+		red.Println("Can't find the dotman.json file.")
+		blue.Println("Run \"dotman init\" to initialize the configuration.")
+		os.Exit(1)
+	}
 
 	// variables ._.
 	var name string = ""
 
-	// Parse the positional arguments "<name>" and "<location>"
+	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
 			case 0:
@@ -539,20 +638,20 @@ func Update(c *ezcli.Command) {
 	
 	// Wrong usage output
 	if name == ""{
-		red.Println("Please input the \"Name\" of the Dotfile you want to remove.")
+		red.Println("Please input the \"Name\" of the Dotfile you want to update.")
+		blue.Println("Use \"@a\" to update all the dotfiles.")
 		os.Exit(1)
 	}
 
+	// Special handle named "@a" to update all the dotfiles ( yes its inspired by minecraft :) )
 	if name == "@a" {
 		update_all_dotfiles()
-		green.Println("Successfuly updated all the Dotfiles.\n\n")
-	} else {
+		green.Println("\nSuccessfuly updated all the Dotfiles.")
+	} else { // otherwise update single dotfile
 		dotfile_path := update_dotfile(name)
 		copyFileOrDir(dotfile_path, FILES_PATH)
-		green.Printf("\"%s\" successfuly updated.\n\n", name)
+		green.Printf("\"%s\" successfuly updated.\n", name)
 	}
-
-	
 }
 
 /* ======================= */

@@ -7,16 +7,22 @@
 # Dotman
 The dotfile manager you are searching for
 
-# BETA
-Dotman is in the beta state!
+## Version
+- v0.3 [Next]
+	* Installer scripts
+	* Bug fixes
+- v0.2 [Now]
+	* Automatic git support added
+- v0.1
+	* Initial version of Dotman
 
-## Usage
+## Usage:
 
 ### Commands
 
 ```bash
 # Init
-dotman init <name> [--description=<text>, -d=<text>] [--git, -g] [--install_path=<location>, -i=<location>]
+dotman init <name> [--description=<text>, -d=<text>] [--git, -g] [--remote_url=<git url> --branch_name=<text>] [--install_path=<location>, -i=<location>]
 
 # Add
 dotman add <name> <location> [--description=<text>, -d=<text>] [--priority=<int>, -p=<int>]

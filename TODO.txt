@@ -3,15 +3,15 @@
 - : will not be implemented
 ---------------------------
 
-[X] - Init, Add, Remove, Update, Install Commands 					(+) // Install Will be implemented in version 0.2
+[X] - Init, Add, Remove, Update, Install Commands 					(+) // Install Will be implemented in version 0.3
 
 [X] - Check if dotman.json exists 									(+)
 
-[] - git integration 												(+)
+[X] - git integration 												(+)
 
-[] - Colored output													(+)
+[X] - Colored output												(+)
 
-[] - Automatically Update dotfiles									(+)
+[] - Automatically Update dotfiles									(+) // checking every 1 hour to see if dotfiles changed // will be implemented in version 0.3
 
 [] - Generate Log output 											(+)
 

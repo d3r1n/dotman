@@ -22,8 +22,16 @@ func Handle() {
 				Aliases:     []string{"i", "ip"},
 			},
 			{
+				Name:        "remote_url",
+				Description: "Set the remote git url of the dotfiles (optional)",
+			},
+			{
+				Name:        "branch_name",
+				Description: "Set the installation path of the dotfiles (optional)",
+			},
+			{
 				Name:        "git",
-				Description: "Initiliaze a git repository for the dotfiles(default: false)",
+				Description: "Initiliaze a git repository for the dotfiles (default: false)",
 				Aliases:     []string{"g"},
 			},
 		},

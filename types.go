@@ -15,10 +15,9 @@ type Config struct {
 }
 
 type GitConfig struct {
-	Name 			string // 		name of the git repository 			(required)
-	Description 	string // 		description of the git repository 	(required)
+	RemoteName 		string // 		name of the git repository 			(required)
+	RemoteUrl 		string // 		name of the git repository 			(required)
 	Branch 			string // 		branch name of the git repository 	(optional) (default: "master")
-	Origin 			string // 		name of the git repository 			(required)
 }
 
 type Dotfile struct {
