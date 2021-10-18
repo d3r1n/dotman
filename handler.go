@@ -78,5 +78,23 @@ func Handle() {
 		},
 	})
 
+	handler.AddCommand(&ezcli.Command{
+		Name:        "command",
+		Description: "Command utilities",
+		Aliases:     []string{"cmd"},
+		Execute: func(c *ezcli.Command) {
+			Command(c)
+		},
+	})
+
+	handler.AddCommand(&ezcli.Command{
+		Name:        "generate_installer",
+		Description: "Generates Installer Script",
+		Aliases:     []string{"gen"},
+		Execute: func(c *ezcli.Command) {
+			Installer(c)
+		},
+	})
+
 	handler.Handle()
 }

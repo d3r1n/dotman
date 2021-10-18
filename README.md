@@ -7,12 +7,24 @@
 # Dotman
 The dotfile manager you are searching for
 
-## Version
-- v0.3 [Next]
-	* Installer scripts
+## Version History
+- v0.4 [Next]
+	* Better Documentation
+	* Website?
+	* Multiple Installer Scripts - [Main Feature]
+	* Publishing Dotman to Package Managers - [Main Feature]
+		* Arch 
+		* Ubuntu
+		* Gentoo
+		* Void
+		* And Many others
+- v0.3 [Now]
+	* Automatic Generated installer script - [Main Feature]
+	* Dotman Binary installing script
 	* Bug fixes
-- v0.2 [Now]
-	* Automatic git support added
+- v0.2
+	* Automatic git support added - [Main Feature]
+	* Lots of bug fixes
 - v0.1
 	* Initial version of Dotman
 
@@ -20,7 +32,7 @@ The dotfile manager you are searching for
 
 ### Commands
 
-```bash
+```python
 # Init
 dotman init <name> [--description=<text>, -d=<text>] [--git, -g] [--remote_url=<git url> --branch_name=<text>] [--install_path=<location>, -i=<location>]
 
@@ -35,8 +47,16 @@ dotman update <name>
 
 # Update All
 dotman update @a
-```
 
+# Add a Command
+dotman [command, cmd] add <command>
+
+# Remove a Command
+dotman [command, cmd] remove <command>
+
+# Generate Installer Script
+dotman [generate, gen]
+```
 ---
 
 <div align="center">

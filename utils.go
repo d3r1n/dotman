@@ -1,15 +1,17 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
+	"fmt"
 	"time"
+	"bytes"
+	"bufio"
+	"strconv"
+	"os/exec"
+	"io/ioutil"
+	"encoding/json"
+	"path/filepath"
+	"text/template"
 
 	"github.com/5elenay/ezcli"
 	"github.com/fatih/color"
@@ -21,7 +23,7 @@ import (
 // colored output
 var red 	= color.New(color.FgHiRed)
 var green 	= color.New(color.FgHiGreen)
-var blue 	= color.New(color.FgHiCyan)
+var blue 	= color.New(color.FgHiCyan).Add(color.Bold)
 
 // Formatted time.Now()
 var time_now = time.Now().Format("3:4:5 PM 2006-01-02")
@@ -54,6 +56,10 @@ func Remove_Dot_Array(slice []Dotfile, s int) []Dotfile {
 	return append(slice[:s], slice[s+1:]...)
 }
 
+func Remove_Command_Array(slice []string, s int) []string {
+	return append(slice[:s], slice[s+1:]...)
+}
+
 // Generate a new Dotfile object.
 func newDotfile(Name string, Description string, Location string, Type string, Priority int64, LastUpdate string) *Dotfile {
 	return &Dotfile{
@@ -76,7 +82,7 @@ func newGitConfig(RemoteName string, Branch string, RemoteUrl string) *GitConfig
 }
 
 // Generate a new Config object.
-func newConfig(Name string, Description string, InstallPath string, Git bool, Repository GitConfig, Dotfiles []Dotfile) *Config {
+func newConfig(Name string, Description string, InstallPath string, Git bool, Repository GitConfig, Dotfiles []Dotfile, Commands []string) *Config {
 	return &Config {
 		Name:        	Name,
 		Description: 	Description,
@@ -84,6 +90,7 @@ func newConfig(Name string, Description string, InstallPath string, Git bool, Re
 		Git: 			Git,
 		Repository: 	Repository,
 		Dotfiles: 		Dotfiles,
+		Commands: Commands,
 	}
 }
 
@@ -120,6 +127,16 @@ func CreateAndWrite_JSON(input []byte) {
 // Check if dotman.json exists in the current working directory
 func check_config_exist() bool {
 	if _, err := os.Stat("./dotman.json"); os.IsNotExist(err) {
+		return false
+	} else {
+		return true
+	}
+}
+
+func check_install_path_exist() bool {
+	conf := read_config_file()
+
+	if conf.InstallPath == "" {
 		return false
 	} else {
 		return true
@@ -168,7 +185,7 @@ func add_dotfile(d Dotfile) {
 	conf.Dotfiles = append(conf.Dotfiles, d)
 
 	// new buffer writer for the file
-	wBytes, _ := file.Write(to_JSON(conf))
+	wBytes, err := file.Write(to_JSON(conf))
 	check_Error(err)
 
 	_ = wBytes
@@ -322,11 +339,119 @@ func update_all_dotfiles() {
 	file.Close()
 }
 
+// installer functions:
+
+// Generate installer Bash File
+func CreateInstaller(input []byte) {
+	file, err := os.Create("./installer.sh")
+	check_Error(err)
+
+	writer := bufio.NewWriter(file)
+
+	wBytes, err := writer.Write(input)
+	check_Error(err)
+
+	_ = wBytes
+
+	writer.Flush()
+	file.Close()
+}
+
+// Add Dotfile Object to the dotman.json file
+func add_command(c string) {
+
+	// Open the dotman.json file in current working directory as Read & Write mode
+	file, err := os.OpenFile("dotman.json", os.O_CREATE | os.O_RDWR, 0644)
+	check_Error(err)
+
+	conf := read_config_file()
+
+	// append the dotfile array
+	conf.Commands = append(conf.Commands, c)
+
+	// new buffer writer for the file
+	wBytes, err := file.Write(to_JSON(conf))
+	check_Error(err)
+
+	_ = wBytes
+
+	// flush the io writer and close the file
+	file.Sync()
+	file.Close()
+
+	// git stuff
+	gitAdd("./dotman.json", "Dotman: Added 1 Command", conf.Repository.RemoteName, conf.Repository.Branch)
+}
+
+// Remove Dotfile Object from the dotman.json file
+func remove_command(c string) {
+
+	// Open the dotman.json file in current working directory as Read & Write mode
+	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
+	check_Error(err)
+
+	conf := read_config_file()
+
+	// if dotfile is exists set isFound to true and Remove the Dotfile Object from the array
+	// otherwise set isFound to false and continue until whole loop is finished
+	var isFound bool
+	for index, obj := range conf.Commands {
+		if obj == c {
+			green.Printf("Found \"%s\" Command\n", obj)
+			blue.Println("Removing...")
+			isFound = true
+			conf.Commands = Remove_Command_Array(conf.Commands, index)
+			break
+		} else {
+			isFound = false
+			continue
+		}
+	}
+
+	if !isFound {
+		red.Printf("Can't find \"%s\" in Commands", c)
+		os.Exit(1)
+
+	} else {
+		// Remove All the contents of the dotman.json file
+		os.Truncate("dotman.json", 0)
+
+		// new buffer writer for the file
+		writer := bufio.NewWriter(file)
+		_, err := writer.Write(to_JSON(conf))
+		check_Error(err)
+
+		// flush the io writer and close the file
+		writer.Flush()
+		file.Close()
+
+		// git stuff
+		gitRemove("./dotman.json", "Dotman: Removed 1 Command", conf.Repository.RemoteName, conf.Repository.Branch)
+	}
+}
+
+func generate_installer() {
+	
+	var parsed_byte bytes.Buffer
+	conf := read_config_file()
+	
+	tmpl := template.Must(template.New("installer").Parse(installer_template))
+
+	err := tmpl.Execute(&parsed_byte, conf)
+	check_Error(err)
+
+	CreateInstaller(parsed_byte.Bytes())
+
+	gitAdd("./installer.sh", "Dotman: Generated Installer Script", conf.Repository.RemoteName, conf.Repository.Branch)
+}
+
+// File Utils:
 
 // Copy a file or a directory
 func copyFileOrDir(from_location string, to_location string) {
-	cmd := exec.Command("cp", "-f", from_location, to_location)
-	cmd.Run()
+	cmd := exec.Command("cp", "-f", "-r", from_location, to_location)
+	err := cmd.Run()
+	check_Error(err)
 }
 
 // Delete a file or a directory
@@ -336,7 +461,8 @@ func deleteFileOrDir(file string, file_type string) {
 		cmd.Run()
 	} else if file_type == "directory" {
 		cmd := exec.Command("rm", "-d", file)
-		cmd.Run()
+		err := cmd.Run()
+		check_Error(err)
 	}
 
 }
@@ -403,13 +529,13 @@ func git_push(remote string, branch string) {
 // All in one commands:
 
 	// add dotfile
-func git_add_dotfile(add_path string, commit_message string, remote_name string, remote_branch string) {
+func gitAdd(add_path string, commit_message string, remote_name string, remote_branch string) {
 	git_add(add_path)
 	git_commit(commit_message)
 	git_push(remote_name, remote_branch)
 }
 	// remove dotfile
-func git_remove_dotfile(remove_path string, commit_message string, remote_name string, remote_branch string) {
+func gitRemove(remove_path string, commit_message string, remote_name string, remote_branch string) {
 	git_remove(remove_path)
 	git_commit(commit_message)
 	git_push(remote_name, remote_branch)
@@ -433,6 +559,7 @@ func Init(c *ezcli.Command) {
 
 	var repository 		GitConfig
 	var dotfiles 		[]Dotfile = []Dotfile{}
+	var commands		[]string = []string{}
 
 	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
@@ -450,22 +577,20 @@ func Init(c *ezcli.Command) {
 	// if user specified a description, install path or git enable, update the variables
 	for _, option := range c.CommandData.Options {
 		switch option.Name {
-				case "description":
-					description = option.Value
+			case "description":
+				description = option.Value
 
-				case "install_path":
-					install_path = option.Value
+			case "install_path":
+				install_path = option.Value
 				
-				case "git":
-					git = true
+			case "git":
+				git = true
 
-				case "remote_url":
-					remote_url = option.Value
-					blue.Println(remote_url)
+			case "remote_url":
+				remote_url = option.Value
 				
-				case "branch_name":
-					branch_name = option.Value
-					blue.Println(branch_name)
+			case "branch_name":
+				branch_name = option.Value
 			}
 		}
 	}
@@ -481,7 +606,7 @@ func Init(c *ezcli.Command) {
 		}
 	}
 
-	conf = *newConfig(name, description, install_path, git, repository, dotfiles)
+	conf = *newConfig(name, description, install_path, git, repository, dotfiles, commands)
 	json := to_JSON(conf)
 	CreateAndWrite_JSON(json)
 
@@ -573,7 +698,7 @@ func Add(c *ezcli.Command) {
 
 	conf := read_config_file()
 
-	git_add_dotfile(FILES_PATH + filepath.Base(inputDotfile.Location), fmt.Sprintf("Added a \"%s\" dotfile | " + inputDotfile.LastUpdate, name), conf.Repository.RemoteName, conf.Repository.Branch)
+	gitAdd(FILES_PATH + filepath.Base(inputDotfile.Location), fmt.Sprintf("Dotman: Added a \"%s\" dotfile | " + inputDotfile.LastUpdate, name), conf.Repository.RemoteName, conf.Repository.Branch)
 
 	green.Printf("\nAdded \"%s\" to Dotfiles.\n", name)
 }
@@ -610,7 +735,7 @@ func Remove(c *ezcli.Command) {
 	path := remove_dotfile(name)
 	file_name := FILES_PATH + filepath.Base(path[0]) // just filename.extension
 
-	git_remove_dotfile(file_name, fmt.Sprintf("Removed the \"%s\" dotfile | " + time_now, name), conf.Repository.RemoteName, conf.Repository.Branch) // remove dotfile from git repository
+	gitRemove(file_name, fmt.Sprintf("Dotman: Removed the \"%s\" dotfile | " + time_now, name), conf.Repository.RemoteName, conf.Repository.Branch) // remove dotfile from git repository
 	deleteFileOrDir(file_name, path[1]) // delete the file or directory dotfile linked to
 
 	green.Printf("\"%s\" successfuly removed.\n", name)
@@ -654,4 +779,83 @@ func Update(c *ezcli.Command) {
 	}
 }
 
+func Command(c *ezcli.Command) {
+
+	// check if dotman.json exists
+	if !check_config_exist() {
+		red.Println("Can't find the dotman.json file.")
+		blue.Println("Run \"dotman init\" to initialize the configuration.")
+		os.Exit(1)
+	}
+
+	// variables ._.
+	var method 	string = ""
+	var command string = ""
+
+	// Parse the positional arguments "<method> and <command>"
+	for i, v := range c.CommandData.Arguments {
+		switch i {
+			case 0:
+				method = v
+			case 1:
+				command = v
+		}
+	}
+	
+	// Wrong usage output
+	if method == "" {
+		red.Println("Please input the method you want to use.")
+		blue.Println("Use \"add\" to add a command")
+		blue.Println("Use \"remove\" to remove a command")
+		os.Exit(1)
+	} else if method != "add" && method != "remove"{
+		red.Println("Invalid method!")
+		blue.Println("Use \"add\" to add a command")
+		blue.Println("Use \"remove\" to remove a command")
+		os.Exit(1)
+	} else if command == ""{
+		red.Println("Command cannot be empty!")
+		fmt.Printf("Try typing %s \n", color.CyanString("\"echo Hello World!\""))
+		os.Exit(1)
+	}
+
+	if method == "add" {
+
+		add_command(command)
+		green.Println("\nAdded " + command + " to Commands.")
+
+	} else if method == "remove" {
+		remove_command(command)
+		green.Println("\nRemoved " + command + " from Commands.")
+	}
+
+}
+
+func Installer(c *ezcli.Command) {
+
+	// check if dotman.json exists
+	if !check_config_exist() {
+		red.Println("Can't find the dotman.json file.")
+		blue.Println("Run \"dotman init\" to initialize the configuration.")
+		os.Exit(1)
+	}
+
+	// check if installation path is specified
+	if !check_install_path_exist() {
+		red.Println("Can't find Installation Path in dotman.json file.")
+		blue.Println("Please initialize the Installation Path in the configuration.")
+		os.Exit(1)
+	}
+
+	generate_installer()
+
+	cmd := exec.Command("sudo chmod +x ./installer.sh")
+	cmd.Run()
+
+	green.Println("\nGenerated Installer!")
+	blue.Println("\nPlease run following command to make installer usable:")
+	blue.Println("\tsudo chmod +x ./installer.sh")
+	blue.Println("\nCheck out ./installer.sh")
+
+}
 /* ======================= */
