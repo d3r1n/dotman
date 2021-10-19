@@ -28,6 +28,22 @@ The dotfile manager you are searching for
 - v0.1
 	* Initial version of Dotman
 
+## Installation
+
+Just Execute this command to install the dotman from source
+
+**Requirements**:
+- Go **1.17** or *higher*.
+
+```bash
+curl -L https://git.io/J68cu | bash
+```
+**or**
+
+```bash
+curl https://raw.githubusercontent.com/d3r1n/dotman/master/linux_installer.sh | bash
+```
+
 ## Usage:
 
 ### Commands

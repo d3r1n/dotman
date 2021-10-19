@@ -38,7 +38,7 @@ function install() {
 	git clone https://github.com/d3r1n/dotman.git
 
 	printf "${BPurple}"
-	printf "Building Dotman..."
+	printf "\nBuilding Dotman...\n"
 	printf "${Color_Off}"
 
 	cd ./dotman
@@ -48,13 +48,13 @@ function install() {
 	go build
 
 	printf "${BPurple}"
-	printf "Moving Executable to /bin/ ..."
+	printf "\nMoving Executable to /bin/ ..\n."
 	printf "${Color_Off}"
 
 	sudo mv ./dotman /bin/
 
 	printf "${BPurple}"
-	printf "Cleaning..."
+	printf "\nCleaning...\n"
 	printf "${Color_Off}"
 	
 	cd ..
