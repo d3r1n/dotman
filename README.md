@@ -20,6 +20,7 @@ The dotfile manager you are searching for
 		* And Many others
 - v0.3 [Now]
 	* Automatic Generated installer script - [Main Feature]
+	* Status Commands
 	* Dotman Binary installing script
 	* Bug fixes
 - v0.2
@@ -51,6 +52,9 @@ curl https://raw.githubusercontent.com/d3r1n/dotman/master/linux_installer.sh | 
 ```python
 # Init
 dotman init <name> [--description=<text>, -d=<text>] [--git, -g] [--remote_url=<git url> --branch_name=<text>] [--install_path=<location>, -i=<location>]
+
+# Show information about the dot
+dotman [status, ss] <[normal, dotfiles, commands]>
 
 # Add
 dotman add <name> <location> [--description=<text>, -d=<text>] [--priority=<int>, -p=<int>]

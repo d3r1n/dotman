@@ -96,5 +96,14 @@ func Handle() {
 		},
 	})
 
+	handler.AddCommand(&ezcli.Command{
+		Name:        "status",
+		Description: "Shows the status of the dotfiles",
+		Aliases:     []string{"ss"},
+		Execute: func(c *ezcli.Command) {
+			Status(c)
+		},
+	})
+
 	handler.Handle()
 }

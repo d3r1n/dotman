@@ -24,6 +24,7 @@ import (
 var red 	= color.New(color.FgHiRed)
 var green 	= color.New(color.FgHiGreen)
 var blue 	= color.New(color.FgHiCyan).Add(color.Bold)
+var white	= color.New(color.FgHiWhite).Add(color.Bold)
 
 // Formatted time.Now()
 var time_now = time.Now().Format("3:4:5 PM 2006-01-02")
@@ -104,7 +105,8 @@ func to_JSON(d Config) []byte {
 // Convert JSON Representation to Dotfile Object
 func from_JSON(JSON []byte) Config {
 	var config Config
-	json.Unmarshal(JSON, &config)
+	err := json.Unmarshal(JSON, &config)
+	check_Error(err)
 	return config
 }
 
@@ -191,8 +193,10 @@ func add_dotfile(d Dotfile) {
 	_ = wBytes
 
 	// flush the io writer and close the file
-	file.Sync()
-	file.Close()
+	err = file.Sync()
+	check_Error(err)
+	err = file.Close()
+	check_Error(err)
 }
 
 // Remove Dotfile Object from the dotman.json file
@@ -229,7 +233,8 @@ func remove_dotfile(name string) []string {
 		return []string{}
 	} else {
 		// Remove All the contents of the dotman.json file
-		os.Truncate("dotman.json", 0)
+		err_ := os.Truncate("dotman.json", 0)
+		check_Error(err_)
 
 		// new buffer writer for the file
 		writer := bufio.NewWriter(file)
@@ -279,7 +284,8 @@ func update_dotfile(name string) string {
 		return ""
 	} else {
 		// Remove All the contents of the dotman.json file
-		os.Truncate("dotman.json", 0)
+		err_ := os.Truncate("dotman.json", 0)
+		check_Error(err_)
 
 		// new buffer writer for the file
 		writer := bufio.NewWriter(file)
@@ -326,7 +332,8 @@ func update_all_dotfiles() {
 	git_push(conf.Repository.RemoteName, conf.Repository.Branch)
 
 	// Remove All the contents of the dotman.json file
-	os.Truncate("dotman.json", 0)
+	err_ := os.Truncate("dotman.json", 0)
+	check_Error(err_)
 
 	// new buffer writer for the file
 	writer := bufio.NewWriter(file)
@@ -376,8 +383,10 @@ func add_command(c string) {
 	_ = wBytes
 
 	// flush the io writer and close the file
-	file.Sync()
-	file.Close()
+	err = file.Sync()
+	check_Error(err)
+	err = file.Close()
+	check_Error(err)
 
 	// git stuff
 	gitAdd("./dotman.json", "Dotman: Added 1 Command", conf.Repository.RemoteName, conf.Repository.Branch)
@@ -414,7 +423,8 @@ func remove_command(c string) {
 
 	} else {
 		// Remove All the contents of the dotman.json file
-		os.Truncate("dotman.json", 0)
+		err_ := os.Truncate("dotman.json", 0)
+		check_Error(err_)
 
 		// new buffer writer for the file
 		writer := bufio.NewWriter(file)
@@ -436,13 +446,103 @@ func generate_installer() {
 	conf := read_config_file()
 	
 	tmpl := template.Must(template.New("installer").Parse(installer_template))
-
+	
 	err := tmpl.Execute(&parsed_byte, conf)
 	check_Error(err)
-
+	
 	CreateInstaller(parsed_byte.Bytes())
-
+	
 	gitAdd("./installer.sh", "Dotman: Generated Installer Script", conf.Repository.RemoteName, conf.Repository.Branch)
+}
+
+// Show the undetailed status of the dotman.json file
+func show_status(option string) {
+
+	conf := read_config_file()
+
+	if (option == "normal") {
+
+		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Status --+\n")
+		fmt.Printf("\n")
+
+		white.Printf("%s", "Name: ")
+		color.New(color.FgHiMagenta).Printf("%s\n", conf.Name)
+
+		white.Printf("%s", "Description: ")
+		color.New(color.FgHiYellow).Printf("\"%s\"\n", conf.Description)
+
+		white.Printf("%s", "Install Path: ")
+		color.New(color.FgHiYellow).Printf("%s\n", conf.InstallPath)
+
+		white.Printf("%s", "Git Enabled? ")
+		color.New(color.FgHiMagenta).Printf("%t\n\n", conf.Git)
+
+		white.Printf("\n%s\n", "Repository\n+--------+")
+
+		white.Printf("* %s", "Name: ")
+		color.New(color.FgHiYellow).Printf("%s\n", conf.Repository.RemoteName)
+		white.Printf("* %s", "Branch: ")
+		color.New(color.FgHiYellow).Printf("%s\n", conf.Repository.Branch)
+		white.Printf("* %s", "URL: ")
+		color.New(color.FgHiYellow).Printf("%s\n", conf.Repository.RemoteUrl)
+		white.Printf("+--------+")
+
+		white.Printf("\n\n%s", "Dotfiles: ")
+		green.Printf("%d Dotfiles in this dot.\n", len(conf.Dotfiles))
+		
+		white.Printf("%s", "Commands: ")
+		green.Printf("%d Custom commands in this dot.\n\n", len(conf.Commands))
+
+		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
+
+	} else if (option == "dotfiles") {
+
+		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Dotfiles --+\n")
+		fmt.Printf("\n")
+
+		for _, obj := range conf.Dotfiles {
+			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n")
+
+			white.Printf("Name: ")
+			color.New(color.FgHiYellow).Printf("%s\n", obj.Name)
+
+			white.Printf("Description: ")
+			color.New(color.FgHiYellow).Printf("%s\n", obj.Description)
+
+			white.Printf("Location: ")
+			color.New(color.FgHiYellow).Printf("%s\n", obj.Location)
+
+			white.Printf("Type: ")
+			color.New(color.FgHiYellow).Printf("%s\n", obj.Type)
+
+			white.Printf("Priority: ")
+			color.New(color.FgHiYellow).Printf("%d\n", obj.Priority)
+
+			white.Printf("Last Update: ")
+			color.New(color.FgHiYellow).Printf("%s\n", obj.LastUpdate)
+
+			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n\n\n")
+		}
+
+		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
+
+	} else if (option == "commands") {
+		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Dotfiles --+\n")
+		fmt.Printf("\n")
+
+		for index, obj := range conf.Commands {
+			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n")
+
+			white.Printf("Command #%d: ", index + 1)
+			color.New(color.FgHiYellow).Printf("%s\n", obj)
+
+			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n\n")
+		}
+
+		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
+	}
+	
+
 }
 
 // File Utils:
@@ -466,6 +566,7 @@ func deleteFileOrDir(file string, file_type string) {
 	}
 
 }
+
 
 /* ======================= */
 
@@ -513,12 +614,12 @@ func git_checkout(branch string) {
 }
 
 // check the current working branch
-func check_git_branch() string {
+/* func check_git_branch() string {
 	cmd := exec.Command("git", "branch")
 	out, err := cmd.Output()
 	check_Error(err)
 	return string(out)
-}
+} */
 
 // git push
 func git_push(remote string, branch string) {
@@ -692,7 +793,8 @@ func Add(c *ezcli.Command) {
 	if exists(FILES_PATH) {
 		copyFileOrDir(inputDotfile.Location, FILES_PATH)
 	} else {
-		os.Mkdir(FILES_PATH, os.FileMode(0755))
+		err := os.Mkdir(FILES_PATH, os.FileMode(0755))
+		check_Error(err)
 		copyFileOrDir(inputDotfile.Location, FILES_PATH)
 	}
 
@@ -857,5 +959,40 @@ func Installer(c *ezcli.Command) {
 	blue.Println("\tsudo chmod +x ./installer.sh")
 	blue.Println("\nCheck out ./installer.sh")
 
+}
+
+func Status(c *ezcli.Command) {
+
+	// check if dotman.json exists
+	if !check_config_exist() {
+		red.Println("Can't find the dotman.json file.")
+		blue.Println("Run \"dotman init\" to initialize the configuration.")
+		os.Exit(1)
+	}
+
+		// variables ._.
+		var method 	string = "NULL"
+	
+		// Parse the positional arguments "<method>"
+		for i, v := range c.CommandData.Arguments {
+			switch i {
+				case 0:
+					method = v
+			}
+		}
+	
+	// Wrong usage output
+	if method != "normal" && method != "dotfiles" && method != "commands" && method != "NULL" {
+		red.Printf("\"%s\" is not a valid command.", method)
+		white.Println("\n\nCommands:")
+		blue.Println("\tnormal   | display general information about dot.")
+		blue.Println("\tdotfiles | display information about dotfiles in dot.")
+		blue.Println("\tcommands | display information about commands in dot")
+		os.Exit(1)
+	} else if method == "NULL" {
+		show_status("normal")
+	} else {
+		show_status(method)
+	}
 }
 /* ======================= */
