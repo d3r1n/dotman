@@ -1,17 +1,17 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"time"
-	"bytes"
 	"bufio"
-	"strconv"
-	"os/exec"
-	"io/ioutil"
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/5elenay/ezcli"
 	"github.com/fatih/color"
@@ -24,7 +24,8 @@ import (
 var red 	= color.New(color.FgHiRed)
 var green 	= color.New(color.FgHiGreen)
 var blue 	= color.New(color.FgHiCyan).Add(color.Bold)
-var white	= color.New(color.FgHiWhite).Add(color.Bold)
+var white 	= color.New(color.FgHiWhite).Add(color.Bold)
+var yellow 	= color.New(color.FgHiYellow)
 
 // Formatted time.Now()
 var time_now = time.Now().Format("3:4:5 PM 2006-01-02")
@@ -40,7 +41,7 @@ func check_Error(err error) {
 	}
 }
 
-// check the file type of given file 
+// check the file type of given file
 func check_File_Type(path string) string {
 	fileInfo, err := os.Stat(path)
 	check_Error(err)
@@ -57,9 +58,11 @@ func Remove_Dot_Array(slice []Dotfile, s int) []Dotfile {
 	return append(slice[:s], slice[s+1:]...)
 }
 
-func Remove_Command_Array(slice []string, s int) []string {
+func Remove_Command_Array(slice []Command, s int) []Command {
 	return append(slice[:s], slice[s+1:]...)
 }
+
+/* === Generators === */
 
 // Generate a new Dotfile object.
 func newDotfile(Name string, Description string, Location string, Type string, Priority int64, LastUpdate string) *Dotfile {
@@ -75,25 +78,36 @@ func newDotfile(Name string, Description string, Location string, Type string, P
 
 // Generate a new GitConfig object.
 func newGitConfig(RemoteName string, Branch string, RemoteUrl string) *GitConfig {
-	return &GitConfig {
-		RemoteName: 	RemoteName,
-		Branch:    		Branch,
-		RemoteUrl: 		RemoteUrl,
-	} 
+	return &GitConfig{
+		RemoteName: RemoteName,
+		Branch:     Branch,
+		RemoteUrl:  RemoteUrl,
+	}
 }
 
 // Generate a new Config object.
-func newConfig(Name string, Description string, InstallPath string, Git bool, Repository GitConfig, Dotfiles []Dotfile, Commands []string) *Config {
-	return &Config {
-		Name:        	Name,
-		Description: 	Description,
-		InstallPath: 	InstallPath,
-		Git: 			Git,
-		Repository: 	Repository,
-		Dotfiles: 		Dotfiles,
-		Commands: Commands,
+func newConfig(Name string, Description string, InstallPath string, Git bool, Repository GitConfig, Dotfiles []Dotfile, Commands []Command) *Config {
+	return &Config{
+		Name:        Name,
+		Description: Description,
+		InstallPath: InstallPath,
+		Git:         Git,
+		Repository:  Repository,
+		Dotfiles:    Dotfiles,
+		Commands:    Commands,
 	}
 }
+
+// Generate a new Command object
+func newCommand(Name string, Execute string, Sudo bool) *Command {
+	return &Command{
+		Name:    Name,
+		Execute: Execute,
+		Sudo:    Sudo,
+	}
+}
+
+/* ================ */
 
 // Convert Dotfile Object to JSON Representation
 func to_JSON(d Config) []byte {
@@ -170,7 +184,7 @@ func read_config_file() Config {
 func add_dotfile(d Dotfile) {
 
 	// Open the dotman.json file in current working directory as Read & Write mode
-	file, err := os.OpenFile("dotman.json", os.O_CREATE | os.O_RDWR, 0644)
+	file, err := os.OpenFile("dotman.json", os.O_CREATE|os.O_RDWR, 0644)
 	check_Error(err)
 
 	conf := read_config_file()
@@ -298,7 +312,7 @@ func update_dotfile(name string) string {
 
 		// git stuff
 		git_add(FILES_PATH + filepath.Base(Location))
-		git_commit(fmt.Sprintf("Dotman: Updated the \"%s\" dotfile | " + time_now, name))
+		git_commit(fmt.Sprintf("Dotman: Updated the \"%s\" dotfile | "+time_now, name))
 		git_push(conf.Repository.RemoteName, conf.Repository.Branch)
 
 		return Location
@@ -319,12 +333,12 @@ func update_all_dotfiles() {
 	// if dotfile is already exists set isFound to true and Remove the Dotfile Object from the array
 	// otherwise set isFound to false and continue until whole loop is finished
 	for index, obj := range conf.Dotfiles {
-		blue.Printf("Updating: %s...\n",  obj.Name)
+		blue.Printf("Updating: %s...\n", obj.Name)
 		conf.Dotfiles[index].LastUpdate = time_now
 		copyFileOrDir(obj.Location, FILES_PATH)
-		
+
 		// add file to git repository | executed for every dotfile in dotman.json
-		git_add(FILES_PATH + filepath.Base(obj.Location)) 
+		git_add(FILES_PATH + filepath.Base(obj.Location))
 	}
 
 	// git stuff
@@ -365,14 +379,20 @@ func CreateInstaller(input []byte) {
 }
 
 // Add Dotfile Object to the dotman.json file
-func add_command(c string) {
+func add_command(c Command) {
 
 	// Open the dotman.json file in current working directory as Read & Write mode
-	file, err := os.OpenFile("dotman.json", os.O_CREATE | os.O_RDWR, 0644)
+	file, err := os.OpenFile("dotman.json", os.O_CREATE|os.O_RDWR, 0644)
 	check_Error(err)
 
 	conf := read_config_file()
 
+	for _, v :=range conf.Commands {
+		if v.Name == c.Name {
+			red.Printf("\n%s already exists in dotman.json!", v.Name)
+			os.Exit(1)
+		}
+	}
 	// append the dotfile array
 	conf.Commands = append(conf.Commands, c)
 
@@ -405,8 +425,8 @@ func remove_command(c string) {
 	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
 	for index, obj := range conf.Commands {
-		if obj == c {
-			green.Printf("Found \"%s\" Command\n", obj)
+		if obj.Name == c {
+			green.Printf("Found \"%s\" Command\n", c)
 			blue.Println("Removing...")
 			isFound = true
 			conf.Commands = Remove_Command_Array(conf.Commands, index)
@@ -436,31 +456,31 @@ func remove_command(c string) {
 		file.Close()
 
 		// git stuff
-		gitRemove("./dotman.json", "Dotman: Removed 1 Command", conf.Repository.RemoteName, conf.Repository.Branch)
+		gitAdd("./dotman.json", "Dotman: Removed 1 Command", conf.Repository.RemoteName, conf.Repository.Branch)
 	}
 }
 
 func generate_installer() {
-	
+
 	var parsed_byte bytes.Buffer
 	conf := read_config_file()
-	
+
 	tmpl := template.Must(template.New("installer").Parse(installer_template))
-	
+
 	err := tmpl.Execute(&parsed_byte, conf)
 	check_Error(err)
-	
+
 	CreateInstaller(parsed_byte.Bytes())
-	
+
 	gitAdd("./installer.sh", "Dotman: Generated Installer Script", conf.Repository.RemoteName, conf.Repository.Branch)
 }
 
-// Show the undetailed status of the dotman.json file
+// Show the status of the dotman.json file
 func show_status(option string) {
 
 	conf := read_config_file()
 
-	if (option == "normal") {
+	if option == "normal" {
 
 		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Status --+\n")
 		fmt.Printf("\n")
@@ -469,79 +489,84 @@ func show_status(option string) {
 		color.New(color.FgHiMagenta).Printf("%s\n", conf.Name)
 
 		white.Printf("%s", "Description: ")
-		color.New(color.FgHiYellow).Printf("\"%s\"\n", conf.Description)
+		yellow.Printf("\"%s\"\n", conf.Description)
 
 		white.Printf("%s", "Install Path: ")
-		color.New(color.FgHiYellow).Printf("%s\n", conf.InstallPath)
+		yellow.Printf("%s\n", conf.InstallPath)
 
 		white.Printf("%s", "Git Enabled? ")
-		color.New(color.FgHiMagenta).Printf("%t\n\n", conf.Git)
+		color.New(color.FgHiMagenta).Printf("%t\n", conf.Git)
 
 		white.Printf("\n%s\n", "Repository\n+--------+")
 
 		white.Printf("* %s", "Name: ")
-		color.New(color.FgHiYellow).Printf("%s\n", conf.Repository.RemoteName)
+		yellow.Printf("%s\n", conf.Repository.RemoteName)
 		white.Printf("* %s", "Branch: ")
-		color.New(color.FgHiYellow).Printf("%s\n", conf.Repository.Branch)
+		yellow.Printf("%s\n", conf.Repository.Branch)
 		white.Printf("* %s", "URL: ")
-		color.New(color.FgHiYellow).Printf("%s\n", conf.Repository.RemoteUrl)
+		yellow.Printf("%s\n", conf.Repository.RemoteUrl)
 		white.Printf("+--------+")
 
 		white.Printf("\n\n%s", "Dotfiles: ")
 		green.Printf("%d Dotfiles in this dot.\n", len(conf.Dotfiles))
-		
+
 		white.Printf("%s", "Commands: ")
 		green.Printf("%d Custom commands in this dot.\n\n", len(conf.Commands))
 
 		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
 
-	} else if (option == "dotfiles") {
+	} else if option == "dotfiles" {
 
 		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Dotfiles --+\n")
 		fmt.Printf("\n")
 
 		for _, obj := range conf.Dotfiles {
-			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n")
+			red.Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n")
 
 			white.Printf("Name: ")
-			color.New(color.FgHiYellow).Printf("%s\n", obj.Name)
+			yellow.Printf("%s\n", obj.Name)
 
 			white.Printf("Description: ")
-			color.New(color.FgHiYellow).Printf("%s\n", obj.Description)
+			yellow.Printf("%s\n", obj.Description)
 
 			white.Printf("Location: ")
-			color.New(color.FgHiYellow).Printf("%s\n", obj.Location)
+			yellow.Printf("%s\n", obj.Location)
 
 			white.Printf("Type: ")
-			color.New(color.FgHiYellow).Printf("%s\n", obj.Type)
+			yellow.Printf("%s\n", obj.Type)
 
 			white.Printf("Priority: ")
-			color.New(color.FgHiYellow).Printf("%d\n", obj.Priority)
+			yellow.Printf("%d\n", obj.Priority)
 
 			white.Printf("Last Update: ")
-			color.New(color.FgHiYellow).Printf("%s\n", obj.LastUpdate)
+			yellow.Printf("%s\n", obj.LastUpdate)
 
-			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n\n\n")
+			red.Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n\n")
 		}
 
 		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
 
-	} else if (option == "commands") {
-		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Dotfiles --+\n")
+	} else if option == "commands" {
+		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Commands --+\n")
 		fmt.Printf("\n")
 
-		for index, obj := range conf.Commands {
-			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n")
+		for _, obj := range conf.Commands {
+			red.Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n")
 
-			white.Printf("Command #%d: ", index + 1)
-			color.New(color.FgHiYellow).Printf("%s\n", obj)
+			white.Printf("Command: ")
+			yellow.Printf("%s\n", obj.Name)
 
-			color.New(color.FgHiRed).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n\n")
+			white.Printf("Execute: ")
+			yellow.Printf("%s\n", obj.Execute)
+
+			white.Printf("Sudo Enabled? ")
+			color.New(color.FgHiMagenta).Printf("%t\n", obj.Sudo)
+
+			red.Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("+-------------+\n\n")
 		}
 
-		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
+		color.New(color.FgHiCyan).Add(color.Bold).Printf("+--------------------+\n")
 	}
-	
 
 }
 
@@ -567,7 +592,6 @@ func deleteFileOrDir(file string, file_type string) {
 
 }
 
-
 /* ======================= */
 
 /* ==== GIT UTILITIES ==== */
@@ -578,7 +602,7 @@ func git_init() {
 	cmd.Run()
 }
 
-// git remote add 
+// git remote add
 func git_remote_add(name string, url string) {
 	cmd := exec.Command("git", "remote", "add", name, url)
 	cmd.Run()
@@ -629,13 +653,14 @@ func git_push(remote string, branch string) {
 
 // All in one commands:
 
-	// add dotfile
+// add dotfile
 func gitAdd(add_path string, commit_message string, remote_name string, remote_branch string) {
 	git_add(add_path)
 	git_commit(commit_message)
 	git_push(remote_name, remote_branch)
 }
-	// remove dotfile
+
+// remove dotfile
 func gitRemove(remove_path string, commit_message string, remote_name string, remote_branch string) {
 	git_remove(remove_path)
 	git_commit(commit_message)
@@ -651,45 +676,45 @@ func Init(c *ezcli.Command) {
 	// variables ._.
 	var conf Config
 
-	var name 			string = ""
-	var description 	string = "No description specified"
-	var install_path 	string = ""
-	var git 			bool   = false
-	var remote_url 		string
-	var branch_name 	string
+	var name string = ""
+	var description string = "No description specified"
+	var install_path string = ""
+	var git bool = false
+	var remote_url string
+	var branch_name string
 
-	var repository 		GitConfig
-	var dotfiles 		[]Dotfile = []Dotfile{}
-	var commands		[]string = []string{}
+	var repository GitConfig
+	var dotfiles []Dotfile = []Dotfile{}
+	var commands []Command = []Command{}
 
 	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
-			case 0:
-				name = v
-	}
+		case 0:
+			name = v
+		}
 
-	// Wrong usage output
-	if name == "" {
-		red.Println("Please input the \"Name\" of the Dotman Project.")
-		os.Exit(1)
-	}
+		// Wrong usage output
+		if name == "" {
+			red.Println("Please input the \"Name\" of the Dotman Project.")
+			os.Exit(1)
+		}
 
-	// if user specified a description, install path or git enable, update the variables
-	for _, option := range c.CommandData.Options {
-		switch option.Name {
+		// if user specified a description, install path or git enable, update the variables
+		for _, option := range c.CommandData.Options {
+			switch option.Name {
 			case "description":
 				description = option.Value
 
 			case "install_path":
 				install_path = option.Value
-				
+
 			case "git":
 				git = true
 
 			case "remote_url":
 				remote_url = option.Value
-				
+
 			case "branch_name":
 				branch_name = option.Value
 			}
@@ -733,21 +758,21 @@ func Add(c *ezcli.Command) {
 	}
 
 	// variables ._.
-	var name 		string = ""
-	var location 	string = ""
+	var name string = ""
+	var location string = ""
 	var description string = "No description specified"
-	var Type 		string = ""
-	var priority 	int64  = 1
-	var lastupdate 	string = time.Now().Format("3:4:5 PM 2006-01-02")
+	var Type string = ""
+	var priority int64 = 1
+	var lastupdate string = time.Now().Format("3:4:5 PM 2006-01-02")
 
 	// Parse the positional arguments "<name>" and "<location>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
-			case 0:
-				name = v
+		case 0:
+			name = v
 
-			case 1:
-				location = v
+		case 1:
+			location = v
 		}
 	}
 
@@ -763,17 +788,17 @@ func Add(c *ezcli.Command) {
 	// if user specified a description or a priority update the variables
 	for _, option := range c.CommandData.Options {
 		switch option.Name {
-			case "description":
-				description = option.Value
+		case "description":
+			description = option.Value
 
-			// priority must be between or equal 1 and 3
-			case "priority":
-				if i, _ := strconv.ParseInt(option.Value, 0, 8); i > 3 {
-					priority = 3
-				} else if i, _ := strconv.ParseInt(option.Value, 0, 8); i < 0 {
-					priority = 1
-				} else {
-					priority = 1
+		// priority must be between or equal 1 and 3
+		case "priority":
+			if i, _ := strconv.ParseInt(option.Value, 0, 8); i > 3 {
+				priority = 3
+			} else if i, _ := strconv.ParseInt(option.Value, 0, 8); i < 0 {
+				priority = 1
+			} else {
+				priority = 1
 			}
 		}
 	}
@@ -800,12 +825,12 @@ func Add(c *ezcli.Command) {
 
 	conf := read_config_file()
 
-	gitAdd(FILES_PATH + filepath.Base(inputDotfile.Location), fmt.Sprintf("Dotman: Added a \"%s\" dotfile | " + inputDotfile.LastUpdate, name), conf.Repository.RemoteName, conf.Repository.Branch)
+	gitAdd(FILES_PATH+filepath.Base(inputDotfile.Location), fmt.Sprintf("Dotman: Added a \"%s\" dotfile | "+inputDotfile.LastUpdate, name), conf.Repository.RemoteName, conf.Repository.Branch)
 
 	green.Printf("\nAdded \"%s\" to Dotfiles.\n", name)
 }
 
-func Remove(c *ezcli.Command) {	
+func Remove(c *ezcli.Command) {
 
 	// check if dotman.json exists
 	if !check_config_exist() {
@@ -820,13 +845,13 @@ func Remove(c *ezcli.Command) {
 	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
-			case 0:
-				name = v
+		case 0:
+			name = v
 		}
 	}
-	
+
 	// Wrong usage output
-	if name == ""{
+	if name == "" {
 		red.Println("Please input the \"Name\" of the Dotfile you want to remove.")
 		os.Exit(1)
 	}
@@ -837,8 +862,8 @@ func Remove(c *ezcli.Command) {
 	path := remove_dotfile(name)
 	file_name := FILES_PATH + filepath.Base(path[0]) // just filename.extension
 
-	gitRemove(file_name, fmt.Sprintf("Dotman: Removed the \"%s\" dotfile | " + time_now, name), conf.Repository.RemoteName, conf.Repository.Branch) // remove dotfile from git repository
-	deleteFileOrDir(file_name, path[1]) // delete the file or directory dotfile linked to
+	gitRemove(file_name, fmt.Sprintf("Dotman: Removed the \"%s\" dotfile | "+time_now, name), conf.Repository.RemoteName, conf.Repository.Branch) // remove dotfile from git repository
+	deleteFileOrDir(file_name, path[1])                                                                                                           // delete the file or directory dotfile linked to
 
 	green.Printf("\"%s\" successfuly removed.\n", name)
 }
@@ -858,13 +883,13 @@ func Update(c *ezcli.Command) {
 	// Parse the positional argument "<name>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
-			case 0:
-				name = v
+		case 0:
+			name = v
 		}
 	}
-	
+
 	// Wrong usage output
-	if name == ""{
+	if name == "" {
 		red.Println("Please input the \"Name\" of the Dotfile you want to update.")
 		blue.Println("Use \"@a\" to update all the dotfiles.")
 		os.Exit(1)
@@ -881,7 +906,7 @@ func Update(c *ezcli.Command) {
 	}
 }
 
-func Command(c *ezcli.Command) {
+func CommandHandler(c *ezcli.Command) {
 
 	// check if dotman.json exists
 	if !check_config_exist() {
@@ -892,43 +917,57 @@ func Command(c *ezcli.Command) {
 
 	// variables ._.
 	var method 	string = ""
+
+	var name 	string = ""
 	var command string = ""
+	var sudo 	bool = false
 
 	// Parse the positional arguments "<method> and <command>"
 	for i, v := range c.CommandData.Arguments {
 		switch i {
-			case 0:
-				method = v
-			case 1:
-				command = v
+		case 0:
+			method = v
+		case 1:
+			name = v
+		case 2:
+			command = v
 		}
 	}
-	
+
+	for _, option := range c.CommandData.Options {
+		switch option.Name {
+			case "sudo":
+				sudo = true
+		}
+	}
+
 	// Wrong usage output
 	if method == "" {
 		red.Println("Please input the method you want to use.")
 		blue.Println("Use \"add\" to add a command")
 		blue.Println("Use \"remove\" to remove a command")
 		os.Exit(1)
-	} else if method != "add" && method != "remove"{
+	} else if method != "add" && method != "remove" {
 		red.Println("Invalid method!")
 		blue.Println("Use \"add\" to add a command")
 		blue.Println("Use \"remove\" to remove a command")
 		os.Exit(1)
-	} else if command == ""{
-		red.Println("Command cannot be empty!")
-		fmt.Printf("Try typing %s \n", color.CyanString("\"echo Hello World!\""))
+	} else if method != "remove" && (name == "" || command == "") {
+		red.Println("Empty field(s)! Please input all the fields")
+		fmt.Printf("Try typing \"hello %s\"\n", color.CyanString("\"echo Hello World!\""))
 		os.Exit(1)
 	}
 
 	if method == "add" {
 
-		add_command(command)
-		green.Println("\nAdded " + command + " to Commands.")
+		Command := newCommand(name, command, sudo)
+
+		add_command(*Command)
+		green.Println("\nAdded " + name + " to Commands.")
 
 	} else if method == "remove" {
-		remove_command(command)
-		green.Println("\nRemoved " + command + " from Commands.")
+		remove_command(name)
+		green.Println("\nRemoved " + name + " from Commands.")
 	}
 
 }
@@ -970,17 +1009,17 @@ func Status(c *ezcli.Command) {
 		os.Exit(1)
 	}
 
-		// variables ._.
-		var method 	string = "NULL"
-	
-		// Parse the positional arguments "<method>"
-		for i, v := range c.CommandData.Arguments {
-			switch i {
-				case 0:
-					method = v
-			}
+	// variables ._.
+	var method string = "NULL"
+
+	// Parse the positional arguments "<method>"
+	for i, v := range c.CommandData.Arguments {
+		switch i {
+		case 0:
+			method = v
 		}
-	
+	}
+
 	// Wrong usage output
 	if method != "normal" && method != "dotfiles" && method != "commands" && method != "NULL" {
 		red.Printf("\"%s\" is not a valid command.", method)
@@ -995,4 +1034,5 @@ func Status(c *ezcli.Command) {
 		show_status(method)
 	}
 }
+
 /* ======================= */

@@ -82,8 +82,15 @@ func Handle() {
 		Name:        "command",
 		Description: "Command utilities",
 		Aliases:     []string{"cmd"},
+		Options: []*ezcli.CommandOption{
+			{
+				Name:        "sudo",
+				Description: "determine the sudo usage for the command",
+				Aliases:     []string{"s"},
+			},
+		},
 		Execute: func(c *ezcli.Command) {
-			Command(c)
+			CommandHandler(c)
 		},
 	})
 

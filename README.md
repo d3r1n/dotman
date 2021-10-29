@@ -69,10 +69,10 @@ dotman update <name>
 dotman update @a
 
 # Add a Command
-dotman [command, cmd] add <command>
+dotman [command, cmd] add [--sudo, -s] <name> <command>
 
 # Remove a Command
-dotman [command, cmd] remove <command>
+dotman [command, cmd] remove <name>
 
 # Generate Installer Script
 dotman [generate, gen]
