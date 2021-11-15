@@ -1,24 +1,26 @@
 package main
 
 const FILES_PATH string = "./files/"
+const INSTALLERS_PATH string = "./installers/"
 
 type Config struct {
 	Name        string // 		name of the Dotfile Project				(required)
 	Description string // 		description of the Dotfile Project		(optional) (default: "No Description Provided")
 	InstallPath string // 		path to the installation 				(required)
 
-	// if true, a git repo will be initialized and automatically updated with every action (optional) (default: false)
+	// if true, a git repo will be initialized and
+	// automatically updated with every action (optional) (default: false)
 	Git bool
 
 	Repository GitConfig
 	Dotfiles   []Dotfile
-	Commands   []Command
+	Installers []Installer
 }
 
 type GitConfig struct {
 	RemoteName string // name of the git repository 			(required)
 	RemoteUrl  string // name of the git repository 			(required)
-	Branch     string // branch name of the git repository 	(optional) (default: "master")
+	Branch     string // branch name of the git repository 		(optional) (default: "master")
 }
 
 type Dotfile struct {
@@ -30,10 +32,20 @@ type Dotfile struct {
 	LastUpdate  string // the last update date of the dotfile 	(auto)
 }
 
+type Installer struct {
+	Name        string    // the name of the installer				(required)
+	Description string    // the description of the installer 		(optional) (default: "No Description Provided")
+	Commands    []Command // the command to execute the installer	    (required)
+}
+
 type Command struct {
-	Name    string // the name of the command 								(required)
 	Execute string // actual command										(required)
 	Sudo    bool   // whether the command should be executed in sudo mode 	(optional) (default: false)
+}
+
+type Tmpl struct {
+    InstallPath      string
+    Installer        Installer
 }
 
 /* Template For The Installer Script */
@@ -95,11 +107,12 @@ function setup_point() {
 
 # User defined commands
 function run_point() {
-	{{ range .Commands }}
-	{{ if .Sudo }}# Command: {{ .Name}}
-	sudo {{ .Execute}}{{ else }}
-	# Command {{ .Name }}
-	{{ .Execute }}{{ end }}
+	{{ range .Installer.Commands }}
+	{{ if .Sudo }}
+	sudo {{ .Execute}}
+    {{ else }}
+	{{ .Execute }}
+    {{ end }}
 	{{ end }}
 }
 

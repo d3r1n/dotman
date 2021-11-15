@@ -22,12 +22,14 @@ func Handle() {
 				Aliases:     []string{"i", "ip"},
 			},
 			{
-				Name:        "remote_url",
+				Name:        "remote",
 				Description: "Set the remote git url of the dotfiles (optional)",
+                Aliases:     []string{"r"},
 			},
 			{
-				Name:        "branch_name",
+				Name:        "branch",
 				Description: "Set the installation path of the dotfiles (optional)",
+                Aliases:     []string{"b"},
 			},
 			{
 				Name:        "git",
@@ -95,11 +97,27 @@ func Handle() {
 	})
 
 	handler.AddCommand(&ezcli.Command{
-		Name:        "generate_installer",
+		Name:        "installer",
+		Description: "installer utilities",
+		Aliases:     []string{"cmd"},
+		Options: []*ezcli.CommandOption{
+			{
+				Name:        "description",
+				Description: "add description",
+				Aliases:     []string{"d"},
+			},
+		},
+		Execute: func(c *ezcli.Command) {
+			InstallerHandler(c)
+		},
+	})
+
+	handler.AddCommand(&ezcli.Command{
+		Name:        "generate",
 		Description: "Generates Installer Script",
 		Aliases:     []string{"gen"},
 		Execute: func(c *ezcli.Command) {
-			Installer(c)
+			Install(c)
 		},
 	})
 
