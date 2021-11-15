@@ -33,7 +33,7 @@ With dotfiles you can configure your system in a way you can constumize anthing 
 
 But maintaing dotfiles is not easy. \
 You have to know what files you want to store and where. \
-That's why dotman is here to help you. \
+That's why dotman is here to help you. 
 
 ### Initializing
 we will be using a github repo to store our dotfiles. \
@@ -44,10 +44,10 @@ $ mkdir MyDotfiles
 $ dotman init MyDotfiles --git --remote="https://github.com/YOUR_USERNAME/YOUR_REPO" --branch="master"
 ```
 
-this command will initialize dotman in your current working directory. \
+this command will initialize dotman in your current working directory.
 
 ### Adding Dotfiles
-To add dotfiles you need to have a file to add... :D
+To add dotfiles you need to have a file to add... :D \
 So lets create a file called `.bashrc` and add it to the dotfiles repo:
 
 ```bash
@@ -67,7 +67,7 @@ You can see 2 things are generated:
 
 these files are used to store the dotfile. \
 Yes! dotman does not uses symlinks to store dotfiles. \
-It makes it easier to manage dotfiles and features. \
+It makes it easier to manage dotfiles and features. 
 
 ## Updating
 Let's change something on our .bashrc file:
@@ -76,7 +76,7 @@ $ echo "echo Hello From dotman!" > .bashrc
 ```
 
 You can see that the file has changed. \
-but our dotfile has not. \
+but our dotfile has not.
 
 We can update our dotfile using the following command:
 ```bash
@@ -112,10 +112,10 @@ $ dotman command add "echo I'm Pickle Riiiick!!"
 We added a dotfile, \
 an installer, \
 and a command. \
-Now we need to generate the installer. \
+Now we need to generate the installer. 
 
 In dotman installers will generate in the `installers` directory. \
-with their own unique name: `installer[my_installer].sh` \
+with their own unique name: `installer[my_installer].sh` 
 
 So let's generate the installer:
 ```bash
