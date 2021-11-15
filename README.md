@@ -5,7 +5,7 @@
 </div>
 
 # Dotman
-The dotfile manager you are searching for...
+better manager for your dotfiles.
 
 ## Documentation
 
