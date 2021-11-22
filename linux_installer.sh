@@ -51,7 +51,7 @@ function install() {
 	printf "\nMoving Executable to /bin/ ..\n."
 	printf "${Color_Off}"
 
-	sudo mv ./dotman /bin/
+	sudo mv ./dotman /usr/bin/
 
 	printf "${BPurple}"
 	printf "\nCleaning...\n"
