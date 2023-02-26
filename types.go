@@ -1,7 +1,9 @@
 package main
 
-const FILES_PATH string = "./files/"
-const INSTALLERS_PATH string = "./installers/"
+const (
+	FILES_PATH      string = "./files/"
+	INSTALLERS_PATH string = "./installers/"
+)
 
 type Config struct {
 	Name        string // 		name of the Dotfile Project				(required)
@@ -44,8 +46,8 @@ type Command struct {
 }
 
 type Tmpl struct {
-    InstallPath      string
-    Installer        Installer
+	InstallPath string
+	Installer   Installer
 }
 
 /* Template For The Installer Script */
