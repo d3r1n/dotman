@@ -1,0 +1,10 @@
+version = 1
+
+[[analyzers]]
+name = "go"
+
+  [analyzers.meta]
+  import_root = "github.com/d3r1n/dotman"
+
+[[transformers]]
+name = "gofumpt"
