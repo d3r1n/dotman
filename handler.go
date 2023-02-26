@@ -24,12 +24,12 @@ func Handle() {
 			{
 				Name:        "remote",
 				Description: "Set the remote git url of the dotfiles (optional)",
-                Aliases:     []string{"r"},
+				Aliases:     []string{"r"},
 			},
 			{
 				Name:        "branch",
 				Description: "Set the installation path of the dotfiles (optional)",
-                Aliases:     []string{"b"},
+				Aliases:     []string{"b"},
 			},
 			{
 				Name:        "git",

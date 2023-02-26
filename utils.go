@@ -21,11 +21,13 @@ import (
 /* ==== Globals ==== */
 
 // colored output
-var red = color.New(color.FgHiRed)
-var green = color.New(color.FgHiGreen)
-var blue = color.New(color.FgHiCyan).Add(color.Bold)
-var white = color.New(color.FgHiWhite).Add(color.Bold)
-var yellow = color.New(color.FgHiYellow)
+var (
+	red    = color.New(color.FgHiRed)
+	green  = color.New(color.FgHiGreen)
+	blue   = color.New(color.FgHiCyan).Add(color.Bold)
+	white  = color.New(color.FgHiWhite).Add(color.Bold)
+	yellow = color.New(color.FgHiYellow)
+)
 
 // Formatted time.Now()
 var time_now = time.Now().Format("3:4:5 PM 2006-01-02")
@@ -182,7 +184,6 @@ func exists(path string) bool {
 
 // read the dotman.json config file
 func read_config_file() Config {
-
 	file_contents, err := ioutil.ReadFile("dotman.json")
 	check_Error(err)
 
@@ -192,7 +193,6 @@ func read_config_file() Config {
 
 // Add Dotfile struct to the dotman.json file
 func add_dotfile(d Dotfile) {
-
 	file, err := os.OpenFile("dotman.json", os.O_CREATE|os.O_RDWR, 0644)
 	check_Error(err)
 
@@ -221,7 +221,6 @@ func add_dotfile(d Dotfile) {
 
 // Remove Dotfile struct from the dotman.json file
 func remove_dotfile(name string) []string {
-
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
@@ -267,7 +266,6 @@ func remove_dotfile(name string) []string {
 
 // Update a Dotfile struct in the dotman.json file
 func update_dotfile(name string) string {
-
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
@@ -319,7 +317,6 @@ func update_dotfile(name string) string {
 
 // Update all the Dotfile structs in the dotman.json file
 func update_all_dotfiles() {
-
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
@@ -352,18 +349,16 @@ func update_all_dotfiles() {
 	file.Close()
 }
 
-
 // === Installer Functions ===
 
 // add a new installer to the installers in dotman.json
 func add_installer(ins Installer) {
-
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
 	conf := read_config_file()
 
-    // check if the installer is already declared
+	// check if the installer is already declared
 	for _, obj := range conf.Installers {
 		if ins.Name == obj.Name {
 			red.Printf("Installer \"%s\" already exists in dotman.json\n", ins.Name)
@@ -386,14 +381,13 @@ func add_installer(ins Installer) {
 
 // remove an installer from the installers in dotman.json
 func remove_installer(name string) {
-
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
 	conf := read_config_file()
 
-    // if installer is exists set isFound to true and Remove the Installer struct from the array
-    // otherwise set isFound to false and continue until whole loop is finished
+	// if installer is exists set isFound to true and Remove the Installer struct from the array
+	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
 	for index, obj := range conf.Installers {
 		if obj.Name == name {
@@ -441,14 +435,13 @@ func CreateInstallerScript(name string, input []byte) {
 
 // add a new command to a specific installer
 func add_command(name string, c Command) {
-
 	file, err := os.OpenFile("dotman.json", os.O_CREATE|os.O_RDWR, 0644)
 	check_Error(err)
 
 	conf := read_config_file()
 
-    // if  Installer is exists set isFound to true and add a new command to the Installer.Commands array
-    // otherwise set isFound to false and continue until whole loop is finished
+	// if  Installer is exists set isFound to true and add a new command to the Installer.Commands array
+	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
 	var indx int
 	for index, obj := range conf.Installers {
@@ -486,14 +479,13 @@ func add_command(name string, c Command) {
 
 // remove a command from a specific installer
 func remove_command(name string, command string) {
-
 	file, err := os.OpenFile("dotman.json", os.O_CREATE|os.O_RDWR, 0644)
 	check_Error(err)
 
 	conf := read_config_file()
 
-    // if command is exists set isFound to true and remove the command from the Installer.Commands array
-    // otherwise set isFound to false and continue until whole loop is finished
+	// if command is exists set isFound to true and remove the command from the Installer.Commands array
+	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
 	var indx int
 	for index, obj := range conf.Installers {
@@ -539,19 +531,18 @@ func remove_command(name string, command string) {
 
 // Generate a new bash script for a specific installer
 func generate_installer(name string) {
-
 	file, err := os.OpenFile("dotman.json", os.O_WRONLY, 6666)
 	check_Error(err)
 
 	conf := read_config_file()
 
-    if !exists(INSTALLERS_PATH) {
-        err := os.Mkdir(INSTALLERS_PATH, 0777)
-        check_Error(err)
-    }
+	if !exists(INSTALLERS_PATH) {
+		err := os.Mkdir(INSTALLERS_PATH, 0777)
+		check_Error(err)
+	}
 
-    // if installer is exists set isFound to true and generate a new bash script
-    // otherwise set isFound to false and continue until whole loop is finished
+	// if installer is exists set isFound to true and generate a new bash script
+	// otherwise set isFound to false and continue until whole loop is finished
 	var isFound bool
 	for index, obj := range conf.Installers {
 		if obj.Name == name {
@@ -563,10 +554,10 @@ func generate_installer(name string) {
 			tmpl := template.Must(template.New("installer").Parse(installer_template))
 
 			err := tmpl.Execute(&parsed_byte, Tmpl{
-                InstallPath: conf.InstallPath,
-                Installer: conf.Installers[index],
-            })
-            
+				InstallPath: conf.InstallPath,
+				Installer:   conf.Installers[index],
+			})
+
 			check_Error(err)
 
 			CreateInstallerScript(name, parsed_byte.Bytes())
@@ -601,10 +592,9 @@ func generate_installer(name string) {
 
 // Show the status of the dotman.json file
 func show_status(option string) {
-
 	conf := read_config_file()
 
-    // show basic info
+	// show basic info
 	if option == "normal" {
 
 		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Status --+\n")
@@ -639,8 +629,8 @@ func show_status(option string) {
 		green.Printf("%d Custom installers in this dot.\n\n", len(conf.Installers))
 
 		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
-    
-    // show detailed info about dotfiles
+
+		// show detailed info about dotfiles
 	} else if option == "dotfiles" {
 
 		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Dotfiles --+\n")
@@ -671,8 +661,8 @@ func show_status(option string) {
 		}
 
 		color.New(color.FgHiCyan).Add(color.Bold).Printf("+-------------------+\n")
-    
-    // show detailed info about installers
+
+		// show detailed info about installers
 	} else if option == "installers" {
 		color.New(color.FgHiCyan).Add(color.Bold).Add(color.Italic).Add(color.Italic).Printf("\n\n+-- Dotman Commands --+\n")
 		fmt.Printf("\n")
@@ -703,7 +693,6 @@ func show_status(option string) {
 
 		color.New(color.FgHiCyan).Add(color.Bold).Printf("+--------------------+\n")
 	}
-
 }
 
 // File Utils:
@@ -725,7 +714,6 @@ func deleteFileOrDir(file string, file_type string) {
 		err := cmd.Run()
 		check_Error(err)
 	}
-
 }
 
 /* ======================= */
@@ -808,7 +796,6 @@ func gitRemove(remove_path string, commit_message string, remote_name string, re
 /* ==== Main Functions ==== */
 
 func Init(c *ezcli.Command) {
-
 	var conf Config
 
 	var name string = ""
@@ -883,7 +870,6 @@ func Init(c *ezcli.Command) {
 }
 
 func Add(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
@@ -935,11 +921,11 @@ func Add(c *ezcli.Command) {
 		}
 	}
 
-    if !exists(location) {
-        red.Println("The location you specified does not exist.")
-        os.Exit(1)
-    }
-    
+	if !exists(location) {
+		red.Println("The location you specified does not exist.")
+		os.Exit(1)
+	}
+
 	// determine the type of the file being added
 	if check_File_Type(location) == "file" {
 		Type = "file"
@@ -967,7 +953,6 @@ func Add(c *ezcli.Command) {
 }
 
 func Remove(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
@@ -1004,7 +989,6 @@ func Remove(c *ezcli.Command) {
 }
 
 func Update(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
@@ -1041,7 +1025,6 @@ func Update(c *ezcli.Command) {
 }
 
 func CommandHandler(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
@@ -1105,11 +1088,9 @@ func CommandHandler(c *ezcli.Command) {
 		remove_command(name, command)
 		green.Println("\nRemoved " + name + " from Commands.")
 	}
-
 }
 
 func InstallerHandler(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
@@ -1170,11 +1151,9 @@ func InstallerHandler(c *ezcli.Command) {
 		remove_installer(name)
 		green.Println("\nRemoved " + name + " from Installers.")
 	}
-
 }
 
 func Install(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
@@ -1211,11 +1190,9 @@ func Install(c *ezcli.Command) {
 	blue.Println("\nPlease run following command to make installer usable:")
 	blue.Println("\tsudo chmod +x ./" + INSTALLERS_PATH + "installer[" + name + "].sh")
 	blue.Println("\nCheck out ./installer.sh")
-
 }
 
 func Status(c *ezcli.Command) {
-
 	// check if dotman.json exists
 	if !check_config_exist() {
 		red.Println("Can't find the dotman.json file.")
